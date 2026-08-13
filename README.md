@@ -133,17 +133,17 @@ sequenceDiagram
 sequenceDiagram
     participant Client
     participant Controller as CompareController
-    participant Loop as Netty event loop (no extra threads)
+    participant EventLoop as Netty event loop (no extra threads)
     participant DB as Postgres
 
     Client->>Controller: GET /api/compare/webflux-r2dbc?count=5
     Controller->>Controller: start = now()
-    Controller->>Loop: Flux.range(1,count).flatMap(id -> repository.findByIdSlow(id))
+    Controller->>EventLoop: Flux.range(1,count).flatMap(id -> repository.findByIdSlow(id))
     par all `count` calls subscribed at once, non-blocking
-        Loop->>DB: R2DBC query (registers callback, thread is free)
-        DB-->>Loop: row after pg_sleep(seconds)
+        EventLoop->>DB: R2DBC query (registers callback, thread is free)
+        DB-->>EventLoop: row after pg_sleep(seconds)
     end
-    Loop-->>Controller: .then(...) fires once all results arrive
+    EventLoop-->>Controller: .then(...) fires once all results arrive
     Controller-->>Client: {"approach":"WebFlux + R2DBC","totalTimeMs": ~seconds*1000}
 ```
 
