@@ -1,0 +1,265 @@
+{
+  "info": {
+    "name": "Blocking vs Non-blocking IO Demo",
+    "description": "Future vs CompletableFuture vs blocking JPA vs WebFlux+R2DBC timing comparison, plus the underlying real-Postgres CRUD endpoints for each service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "blocking_base", "value": "http://localhost:7083" },
+    { "key": "reactive_base", "value": "http://localhost:18082" }
+  ],
+  "item": [
+    {
+      "name": "Compare (Future vs CompletableFuture vs blocking JPA vs WebFlux+R2DBC)",
+      "item": [
+        {
+          "name": "Future (count=5)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/compare/future?count=5&seconds=1",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "compare", "future"],
+              "query": [
+                { "key": "count", "value": "5" },
+                { "key": "seconds", "value": "1" }
+              ]
+            },
+            "description": "ExecutorService + Future: submits `count` blocking JDBC calls to a thread pool, then blocks on future.get() for each. Calls run concurrently, so totalTimeMs should be close to `seconds`, not count*seconds."
+          }
+        },
+        {
+          "name": "CompletableFuture (count=5)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/compare/completable-future?count=5&seconds=1",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "compare", "completable-future"],
+              "query": [
+                { "key": "count", "value": "5" },
+                { "key": "seconds", "value": "1" }
+              ]
+            },
+            "description": "CompletableFuture.supplyAsync + allOf: same concurrent calls as /future, composed differently. totalTimeMs should be similar to /future."
+          }
+        },
+        {
+          "name": "Blocking JPA - sequential (count=5)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/compare/blocking-jpa?count=5&seconds=1",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "compare", "blocking-jpa"],
+              "query": [
+                { "key": "count", "value": "5" },
+                { "key": "seconds", "value": "1" }
+              ]
+            },
+            "description": "No concurrency at all: `count` blocking JDBC calls one after another on the same thread. totalTimeMs should be roughly count * seconds - this is the baseline the other three beat."
+          }
+        },
+        {
+          "name": "WebFlux + R2DBC (count=5)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/api/compare/webflux-r2dbc?count=5&seconds=1",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "compare", "webflux-r2dbc"],
+              "query": [
+                { "key": "count", "value": "5" },
+                { "key": "seconds", "value": "1" }
+              ]
+            },
+            "description": "Flux.flatMap over a non-blocking R2DBC call: `count` calls run concurrently with no thread pool at all. totalTimeMs should be close to /future and /completable-future, without needing to manage any threads."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blocking - Real DB (JPA/JDBC + Hikari)",
+      "item": [
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/blocking/db/users/42",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "blocking", "db", "users", "42"]
+            }
+          }
+        },
+        {
+          "name": "Get user - slow (pg_sleep 1s)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/blocking/db/users/1/slow?seconds=1",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "blocking", "db", "users", "1", "slow"],
+              "query": [{ "key": "seconds", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "Get users (sequential, count=5)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/blocking/db/users?count=5",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "blocking", "db", "users"],
+              "query": [{ "key": "count", "value": "5" }]
+            }
+          }
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ada\",\n  \"email\": \"ada@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{blocking_base}}/api/blocking/db/users",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "blocking", "db", "users"]
+            }
+          }
+        },
+        {
+          "name": "Pool stats (Hikari + thread count)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/blocking/db/pool-stats",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "blocking", "db", "pool-stats"]
+            }
+          }
+        },
+        {
+          "name": "Get user - 404 case",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/api/blocking/db/users/999999",
+              "host": ["{{blocking_base}}"],
+              "path": ["api", "blocking", "db", "users", "999999"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reactive - Real DB (R2DBC + pool)",
+      "item": [
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/api/reactive/db/users/42",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "reactive", "db", "users", "42"]
+            }
+          }
+        },
+        {
+          "name": "Get user - slow (pg_sleep 1s)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/api/reactive/db/users/1/slow?seconds=1",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "reactive", "db", "users", "1", "slow"],
+              "query": [{ "key": "seconds", "value": "1" }]
+            }
+          }
+        },
+        {
+          "name": "Get users (concurrent, count=5)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/api/reactive/db/users?count=5",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "reactive", "db", "users"],
+              "query": [{ "key": "count", "value": "5" }]
+            }
+          }
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grace\",\n  \"email\": \"grace@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{reactive_base}}/api/reactive/db/users",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "reactive", "db", "users"]
+            }
+          }
+        },
+        {
+          "name": "Pool stats (r2dbc-pool + thread count)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/api/reactive/db/pool-stats",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "reactive", "db", "pool-stats"]
+            }
+          }
+        },
+        {
+          "name": "Get user - 404 case",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/api/reactive/db/users/999999",
+              "host": ["{{reactive_base}}"],
+              "path": ["api", "reactive", "db", "users", "999999"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Blocking - actuator health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{blocking_base}}/actuator/health",
+              "host": ["{{blocking_base}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        },
+        {
+          "name": "Reactive - actuator health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reactive_base}}/actuator/health",
+              "host": ["{{reactive_base}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

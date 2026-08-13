@@ -1,0 +1,39 @@
+server:
+  port: 7083
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+
+spring:
+  application:
+    name: blocking-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/demo
+    username: demo
+    password: demo
+    hikari:
+      # Deliberately small pool: makes it easy to see requests queue for a
+      # connection once concurrency exceeds pool size. Both services use
+      # the same pool size so the comparison is apples-to-apples.
+      maximum-pool-size: 10
+      minimum-idle: 10
+      pool-name: blocking-hikari-pool
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,threaddump
+
+logging:
+  level:
+    com.example.blocking: INFO

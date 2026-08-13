@@ -1,0 +1,28 @@
+server:
+  port: 7085
+
+spring:
+  application:
+    name: reactive-service
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/demo
+    username: demo
+    password: demo
+    pool:
+      enabled: true
+      # Same pool size as blocking-service's Hikari pool, so any
+      # throughput difference under load comes from the I/O model, not
+      # from one service having more DB capacity than the other.
+      initial-size: 10
+      max-size: 10
+      pool-name: reactive-r2dbc-pool
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+
+logging:
+  level:
+    com.example.reactive: INFO
